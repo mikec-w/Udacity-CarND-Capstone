@@ -54,11 +54,10 @@ class DBWNode(object):
                                          BrakeCmd, queue_size=1)
 
        # Object variables
-        self.vCar = None # Car velocity
-        self.Omega = None # Angular Velocity
+        self.current_vel = None # Car velocity
+        self.angular_vel = None # Angular Velocity
         self.dbw_enabled = None
-        self.carspeed = None
-        self.angular_vel = None
+        self.linear_vel = None
         self.throttle = 0 # 0-1
         self.steering = 0 #-1>1
         self.brake = 0 # Torque in Nm
@@ -93,9 +92,9 @@ class DBWNode(object):
             #                                                     <current linear velocity>,
             #                                                     <dbw status>,
             #                                                     <any other argument you need>
-            if not None in (self.vCar, self.carspeed, self.Omega):
-                self.throttle, self.brake, self.steering = self.controller.control(self.vCar, 
-                                            self.dbw_enabled, self.carspeed, self.angular_vel)
+            if not None in (self.current_vel, self.linear_vel, self.angular_vel):
+                self.throttle, self.brake, self.steering = self.controller.control(self.current_vel, 
+                                            self.dbw_enabled, self.linear_vel, self.angular_vel)
 
             # if <dbw is enabled>: publish
             if self.dbw_enabled:
@@ -106,11 +105,11 @@ class DBWNode(object):
     # Just copy message information into relevant parameters
 
     def velocity_cb(self, msg):
-        self.vCar = msg.twist.linear.x
+        self.current_vel = msg.twist.linear.x
 
     def twist_cb(self, msg):
-        self.carspeed = msg.twist.linear.x
-        self.Omega = msg.twist.angular.z
+        self.linear_vel = msg.twist.linear.x
+        self.angular_vel = msg.twist.angular.z
 
     def dbwenabled_cb(self, msg):
         # Just store state in object

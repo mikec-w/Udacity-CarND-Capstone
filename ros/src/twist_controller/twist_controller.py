@@ -1,4 +1,4 @@
-Import rospy
+import rospy
 from yaw_controller import YawController
 from pid import PID 
 from lowpass import LowPassFilter
@@ -15,11 +15,11 @@ class Controller(object):
         self.yaw_controller = YawController(wheel_base, steer_ratio, 0.1, max_lat_accel, max_steer_angle)
 
         # PID Throttle controller
-        kp = 0.25
+        kp = 0.3
         ki = 0.1
         kd = 0.
         mn = 0. # Minimum throttle value
-        mx = 1.0 # Maximum throttle value
+        mx = 0.2 # Maximum throttle value
 
         tau = 0.5 # 1/(2pi * tau) = cutoff frequency
         ts = 0.02 # Sample time
@@ -33,6 +33,8 @@ class Controller(object):
         self.accel_limit = accel_limit
         self.wheel_radius = wheel_radius
 
+        self.last_time = rospy.get_time()
+
 
     def control(self, current_vel, dbw_enabled, linear_vel, angular_vel):
         # TODO: Change the arg, kwarg list to suit your needs
@@ -45,6 +47,12 @@ class Controller(object):
 
         current_vel = self.vel_lpf.filt(current_vel)
         
+        # rospy.logwarn("Angular velocity: {0}".format(angular_vel))
+        # rospy.logwarn("Target velocity: {0}".format(linear_vel))
+        # rospy.logwarn("Target angular velocity: {0}".format(angular_vel))
+        # rospy.logwarn("Current velocity: {0}".format(current_vel))
+        # rospy.logwarn("Filtered velocity: {0}".format(self.vel_lpf.get()))
+
         steering = self.yaw_controller.get_steering(linear_vel, angular_vel, current_vel)
 
         vel_error = linear_vel - current_vel
@@ -55,7 +63,7 @@ class Controller(object):
         self.last_time = current_time
 
         throttle = self.throttle_controller.step(vel_error, sample_time)
-        brake_torque = 0
+        brake = 0
 
         ## Special Cases
         if linear_vel == 0. and current_vel < 0.1:
@@ -65,8 +73,8 @@ class Controller(object):
         elif throttle < .1 and vel_error < 0:
             throttle = 0
 
-            force =  self.vehicle_mass * max(vel_error, self.decel_limit) # F = ma, limited decel (-ve values)
-            brake_torque = abs(force) * self.wheel_radius # t = Fd, torque in Nm
+            decel = max(vel_error, self.decel_limit)
+            brake = abs(decel) * self.vehicle_mass * self.wheel_radius # Torque N*m
 
         #return 1., 0., 0.
-        return throttle, brake_torque, steering
+        return throttle, brake, steering
