@@ -6,7 +6,7 @@ from styx_msgs.msg import TrafficLightArray, TrafficLight
 from styx_msgs.msg import Lane
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
-#from light_classification.tl_classifier import TLClassifier
+from tl_classifier import TLClassifier
 import tf
 import cv2
 import yaml
@@ -15,7 +15,7 @@ import time
 
 STATE_COUNT_THRESHOLD = 2
 TL_DETECTION_DISTANCE = 120 # number of waypoints before the next traffic light where traffic light is enabled
-SAVE_TRAFFIC_LIGHT_IMG = False # Save traffic images to train classifier model.
+SAVE_TRAFFIC_LIGHT_IMG = True # Save traffic images to train classifier model.
 
 class TLDetector(object):
     def __init__(self):
@@ -41,11 +41,7 @@ class TLDetector(object):
 
         self.img_count = 0
 
-        config_string = rospy.get_param("/traffic_light_config")
-        self.config = yaml.load(config_string)
-        self.is_site = self.config["is_site"]
-        self.light_classifier = None #TLClassifier(self.is_site)
-
+        self.light_classifier = TLClassifier(self.is_site)
 
         sub1 = rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         sub2 = rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
@@ -60,7 +56,7 @@ class TLDetector(object):
         sub3 = rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
         
         # May want to use image_raw instead for classifier?
-        sub6 = sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
+        sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
 
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
 
@@ -86,25 +82,33 @@ class TLDetector(object):
 
     def save_img(self, light, state):
 
-        if SAVE_TRAFFIC_LIGHT_IMG and self.img_count % 10 == 0: # self.img_count to reduce image save
+        if SAVE_TRAFFIC_LIGHT_IMG and self.has_image: # self.img_count to reduce image save
 
             file_name = "IMG_" + str(time.time()).replace('.','') + '.jpg'
-            #cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
-            cv_image = self.bridge.imgmsg_to_cv2(light, "bgr8")
-            img_path = ''
+            cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+            #cv_image = self.bridge.imgmsg_to_cv2(light, "bgr8")
+            img_path = '/home/student/Udacity/tl_classifier/training_data/light_classification/IMGS/'
 
             if state == 0:
-                img_path = "./light_classification/IMGS/RED/" + file_name
+                if self.img_count % 10 == 0:
+                    img_path = img_path+"RED/" + file_name
+                    cv2.imwrite(img_path, cv_image, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
+                    rospy.loginfo("Path: {0}".format(img_path))
             elif state == 1:
-                img_path = "./light_classification/IMGS/YELLOW/" + file_name
+                img_path = img_path+"YELLOW/" + file_name
+                cv2.imwrite(img_path, cv_image, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
+                rospy.loginfo("Path: {0}".format(img_path))
             elif state == 2:
-                img_path = "./light_classification/IMGS/GREEN/" + file_name
+                if self.img_count % 10 == 0:
+                    img_path = img_path+"GREEN/" + file_name
+                    cv2.imwrite(img_path, cv_image, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
+                    rospy.loginfo("Path: {0}".format(img_path))
             else:
-                img_path = "./light_classification/IMGS/UNKNOWN/" + file_name
+                img_path = img_path+"UNKNOWN/" + file_name
+                cv2.imwrite(img_path, cv_image, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
+                rospy.loginfo("Path: {0}".format(img_path))
 
-            cv2.imwrite(img_path, cv_image, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
-
-        self.img_count += 1
+            self.img_count += 1
 
     def image_cb(self, msg):
         """ updates the current image
@@ -157,7 +161,6 @@ class TLDetector(object):
         Returns:
             int: index of the closest waypoint in self.waypoints
         """
-        #TODO implement
         closest_idx = None
         if self.waypoint_tree:
             closest_idx = self.waypoint_tree.query([x,y], 1)[1]
@@ -175,10 +178,12 @@ class TLDetector(object):
         #    self.prev_light_loc = None
         #    return False
 
-        #cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
         #Get classification
-        #return self.light_classifier.get_classification(cv_image)
+        TL_state = self.light_classifier.get_classification(cv_image)
+
+        rospy.loginfo("TL State: {0}".format(TL_state))
 
         # for testing we return the light state from the simulator
         return light.state
