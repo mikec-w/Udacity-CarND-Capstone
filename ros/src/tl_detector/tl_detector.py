@@ -12,6 +12,7 @@ import cv2
 import yaml
 from scipy.spatial import KDTree
 import time
+import numpy as np
 
 STATE_COUNT_THRESHOLD = 2
 TL_DETECTION_DISTANCE = 120 # number of waypoints before the next traffic light where traffic light is enabled
@@ -41,7 +42,7 @@ class TLDetector(object):
 
         self.img_count = 0
 
-        self.light_classifier = TLClassifier(self.is_site)
+        self.light_classifier = TLClassifier()
 
         sub1 = rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         sub2 = rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
@@ -55,6 +56,9 @@ class TLDetector(object):
         '''
         sub3 = rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
         
+        config_string = rospy.get_param("/traffic_light_config")
+        self.config = yaml.load(config_string)
+
         # May want to use image_raw instead for classifier?
         sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
 
@@ -178,12 +182,18 @@ class TLDetector(object):
         #    self.prev_light_loc = None
         #    return False
 
-        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+        if (self.has_image):
+            try:
+                cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+                image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB);
+                image = cv2.resize(image, (32,64))
+                image_array = np.asarray(image)
 
-        #Get classification
-        TL_state = self.light_classifier.get_classification(cv_image)
-
-        rospy.loginfo("TL State: {0}".format(TL_state))
+                #Get classification
+                TL_state = self.light_classifier.get_classification(image_array[None, :, :, :])
+                rospy.loginfo("TL State: {0}".format(TL_state))
+            finally:
+                pass
 
         # for testing we return the light state from the simulator
         return light.state
