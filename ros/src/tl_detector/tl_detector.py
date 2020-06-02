@@ -191,7 +191,8 @@ class TLDetector(object):
 
                 #Get classification
                 TL_state = self.light_classifier.get_classification(image_array[None, :, :, :])
-                rospy.loginfo("TL State: {0}".format(TL_state))
+
+                rospy.loginfo("TL State: {0}, Actual State: {1}".format(np.argmax(TL_state), light.state))
             finally:
                 pass
 
