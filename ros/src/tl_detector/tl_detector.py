@@ -43,7 +43,7 @@ class TLDetector(object):
         self.img_count = 0
         
         # Set if using real car
-        self.is_site = True
+        self.is_site = False
 
         self.light_classifier = TLClassifier(self.is_site)
 
@@ -195,9 +195,9 @@ class TLDetector(object):
 
                 # Get classification
                 TLstate = self.light_classifier.get_classification(image_array[None, :, :, :])
-                rospy.loginfo("TL State: {0}, Actual State: {1}".format(TLstate, light.state))
+                #rospy.loginfo("TL State: {0}, Actual State: {1}".format(TLstate, light.state))
             except:
-                rospy.loginfo("Could not identify TL State - assuming RED")
+                #rospy.loginfo("Could not identify TL State - assuming RED")
                 TLstate = 0;
             
 
