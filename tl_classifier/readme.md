@@ -32,6 +32,7 @@ The network was trained using two sets of data, one for the simulator and a sepe
 
 `self.is_site = True`
 
+The structure of the network can be seen in tl_classifer/model.py. It was built using KERAS and went through various iterations to achieve reasonable accuracy and to avoid overfitting.
 
 ## Implementation of ROS 
 

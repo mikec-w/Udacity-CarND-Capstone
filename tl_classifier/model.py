@@ -1,6 +1,14 @@
 ## Basic Model for Traffic Light Detection and Classification
 ## And training
 
+## Model structure influenced by:
+
+## Wolf Pack 
+## https://github.com/ericlavigne/CarND-Capstone-Wolf-Pack
+## and
+## https://github.com/MarkBroerkens/CarND-Capstone/blob/master/README.md
+
+
 import csv
 from glob import glob
 import cv2
