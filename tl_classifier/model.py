@@ -15,7 +15,11 @@ from keras import losses, optimizers, regularizers
 
 ## Simple CNN to get framework going...
 # Load all the images
-img_path = '/home/student/Udacity/tl_classifier/training_data/light_classification/IMGS/*/*.jpg'
+#img_path = '/home/student/Udacity/tl_classifier/training_data/light_classification/SIM/*/*.jpg'
+img_path = '/home/student/Udacity/tl_classifier/training_data/light_classification/REAL/*/*.jpg'
+
+#model_name = 'model_sim.h5'
+model_name = 'model_real.h5'
 
 # Create a list of all images
 images = glob(img_path)
@@ -64,25 +68,41 @@ validation_generator = generator(validation_samples, batch_size=batch_size)
 # Basic Model
 model = Sequential()
 
-
 # PRE PROCESSING
 model.add(Lambda(lambda x: x / 255.0 - 0.5, input_shape=(64, 32, 3)))
 
-model.add(Conv2D(32, (3, 3), padding='same', activation='relu'))
+# Conv 1
+# Reasonably high level of dropout due to overfitting becoming an issue.
+model.add(Conv2D(32, (5, 5), padding='same', activation='relu'))
 model.add(MaxPooling2D(2,2))
-Dropout(0.2)
+
+# Conv 2
+model.add(Conv2D(64, (5, 5), padding='same', activation='relu'))
+model.add(MaxPooling2D(2,2))
+
+# Conv 3
+model.add(Conv2D(128, (5, 5), padding='same', activation='relu'))
+model.add(MaxPooling2D(2,2))
+Dropout(0.65)
+
+# Fully connected layers
 model.add(Flatten())
-model.add(Dense(128, activation='relu'))
-model.add(Dense(8, activation='relu'))
+model.add(Dense(1024, activation='relu'))
+
+model.add(Dense(256, activation='relu'))
+Dropout(0.65)
+# Output to the 4 classes
 model.add(Dense(num_classes, activation='softmax'))
 
+# Define loss and optimizer
 loss = losses.categorical_crossentropy
 optimizer = optimizers.Adam()
           
 model.compile(loss=loss, optimizer=optimizer)
 
+# Fit
 model.fit_generator(train_generator, steps_per_epoch=np.ceil(len(train_samples)/batch_size), \
                     validation_data=validation_generator, validation_steps=np.ceil(len(validation_samples)/batch_size), \
-                    epochs=25, verbose=1)
+                    epochs=20, verbose=1)
 
-model.save('model.h5')
+model.save(model_name)

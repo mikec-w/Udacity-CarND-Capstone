@@ -16,7 +16,7 @@ import numpy as np
 
 STATE_COUNT_THRESHOLD = 2
 TL_DETECTION_DISTANCE = 120 # number of waypoints before the next traffic light where traffic light is enabled
-SAVE_TRAFFIC_LIGHT_IMG = True # Save traffic images to train classifier model.
+SAVE_TRAFFIC_LIGHT_IMG = False # Save traffic images to train classifier model.
 
 class TLDetector(object):
     def __init__(self):
@@ -41,8 +41,11 @@ class TLDetector(object):
         self.waypoint_tree = None
 
         self.img_count = 0
+        
+        # Set if using real car
+        self.is_site = True
 
-        self.light_classifier = TLClassifier()
+        self.light_classifier = TLClassifier(self.is_site)
 
         sub1 = rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         sub2 = rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
@@ -83,14 +86,15 @@ class TLDetector(object):
     def traffic_cb(self, msg):
         self.lights = msg.lights
 
-
     def save_img(self, light, state):
+        # Thanks to https://github.com/ericlavigne/CarND-Capstone-Wolf-Pack for the idea to save images in this way
+        # To build up the training set
 
         if SAVE_TRAFFIC_LIGHT_IMG and self.has_image: # self.img_count to reduce image save
 
             file_name = "IMG_" + str(time.time()).replace('.','') + '.jpg'
             cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
-            #cv_image = self.bridge.imgmsg_to_cv2(light, "bgr8")
+
             img_path = '/home/student/Udacity/tl_classifier/training_data/light_classification/IMGS/'
 
             if state == 0:
@@ -178,26 +182,29 @@ class TLDetector(object):
         Returns:
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
         """
-        #if(not self.has_image):
-        #    self.prev_light_loc = None
-        #    return False
+        # Assume RED
+        TLstate = 0 
 
         if (self.has_image):
             try:
+                # Convert image into something usable
                 cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
                 image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB);
                 image = cv2.resize(image, (32,64))
                 image_array = np.asarray(image)
 
-                #Get classification
-                TL_state = self.light_classifier.get_classification(image_array[None, :, :, :])
+                # Get classification
+                TLstate = self.light_classifier.get_classification(image_array[None, :, :, :])
+                rospy.loginfo("TL State: {0}, Actual State: {1}".format(TLstate, light.state))
+            except:
+                rospy.loginfo("Could not identify TL State - assuming RED")
+                TLstate = 0;
+            
 
-                rospy.loginfo("TL State: {0}, Actual State: {1}".format(np.argmax(TL_state), light.state))
-            finally:
-                pass
-
+        # Return light state
+        return TLstate
         # for testing we return the light state from the simulator
-        return light.state
+        #return light.state
 
     def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its
@@ -214,12 +221,6 @@ class TLDetector(object):
         #    car_position = self.get_closest_waypoint(self.pose.pose)
 
         # TODO find the closest visible traffic light (if one exists)
-
-        # if light:
-        #    state = self.get_light_state(light)
-        #    return light_wp, state
-        # self.waypoints = None
-        # return -1, TrafficLight.UNKNOWN
 
         closest_light = None
         line_wp_idx = None
@@ -257,9 +258,7 @@ class TLDetector(object):
             return line_wp_idx, state
         else:
             return -1, TrafficLight.UNKNOWN
-
-
-                     
+                  
 
 if __name__ == '__main__':
     try:

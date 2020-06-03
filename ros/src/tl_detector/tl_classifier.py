@@ -15,12 +15,13 @@ class TLClassifier(object):
 
     model = None
 
-    def __init__(self):
+    def __init__(self, is_site):
 
         # Load Model
-        #f = h5py.File("../../../tl_classifier/model.h5", mode='r')
-
-        self.model = load_model("../../../tl_classifier/model.h5")
+        if (is_site):
+            self.model = load_model("../../../tl_classifier/model_real.h5")
+        else:
+            self.model = load_model("../../../tl_classifier/model_sim.h5")
 
     def get_classification(self, image, wp = 0):
         """Determines the color of the traffic light in the image
@@ -30,5 +31,6 @@ class TLClassifier(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
         """
         TL_State = self.model.predict(image)
-
+        print TL_State
+        TL_State = np.argmax(TL_State)
         return TL_State
